@@ -36,7 +36,6 @@ def _to_gray(arr):
     if arr.ndim == 3 and arr.shape[2] == 3:
         # Y = 0.2989 R + 0.5870 G + 0.1140 B
         gray = np.dot(arr[...,:3], [0.2989, 0.5870, 0.1140])
-        # dtype을 uint8 범위로 정리 (입력이 float일 수도 있어서 clip)
         if np.issubdtype(gray.dtype, np.floating):
             gray = np.clip(gray, 0, 255)
         return gray.astype(np.uint8)
@@ -58,15 +57,14 @@ def select_channels(images_dict, channels='abc'):
     m = {k[-1].lower(): _to_gray(images_dict[k]) for k in images_dict}
     wanted = [ch for ch in channels if ch in m]
     if not wanted:
-        # 사용 가능한 키 보여주기
         raise KeyError(f"Requested channels '{channels}' not found. available={list(images_dict.keys())}")
     imgs = [m[ch] for ch in wanted]  # 각 (H,W)
     arr = np.stack(imgs, axis=-1)    # (H,W,C)
     return arr
+
 def try_clahe_on_a(img_hw_c, channels, use_clahe=False):
     """
-    CLAHE(대비 제한 히스토그램 평활화)를 a 채널에만 적용
-    과노출된 a 채널 보정용
+    CLAHE(대비 제한 히스토그램 평활화)를 a 채널에만 적용 (과노출 보정)
     """
     if not use_clahe or 'a' not in channels:
         return img_hw_c
@@ -197,9 +195,9 @@ class CNNEncoder(nn.Module):
         self.net = nn.Sequential(
             nn.Conv2d(in_ch, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(inplace=True),
             nn.Conv2d(32, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),  # 139x250 -> 70x125
+            nn.MaxPool2d(2, ceil_mode=True),  # 139x250 -> 70x125  ⭐
             nn.Conv2d(32, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),  # 70x125 -> 35x63
+            nn.MaxPool2d(2, ceil_mode=True),  # 70x125 -> 35x63   ⭐
             nn.Conv2d(64, feat, 3, padding=1), nn.BatchNorm2d(feat), nn.ReLU(inplace=True),
         )
         self.feat = feat
@@ -297,13 +295,13 @@ class CNN_GNN_Seg(nn.Module):
         self.head = SegHead(feat=feat, out_ch=out_ch)
 
     def forward(self, x, A_norm):
-        f = self.enc(x)  # (N,F,35,63)
-        N, F, H, W = f.shape
+        f = self.enc(x)  # (N,C,35,63)
+        N, C, H, W = f.shape          # ⭐ 모듈 F와 변수명 충돌 방지
         V = H * W
-        Hn = f.permute(0, 2, 3, 1).reshape(N, V, F)  # (N,V,F)
-        Hn = self.gnn(Hn, A_norm)  # (N,V,F)
-        f2 = Hn.reshape(N, H, W, F).permute(0, 3, 1, 2)  # (N,F,H,W)
-        logits_low = self.head(f2)  # (N,2,H,W)
+        Hn = f.permute(0, 2, 3, 1).reshape(N, V, C)  # (N,V,C)
+        Hn = self.gnn(Hn, A_norm)                    # (N,V,C)
+        f2 = Hn.reshape(N, H, W, C).permute(0, 3, 1, 2)  # (N,C,H,W)
+        logits_low = self.head(f2)                   # (N,2,H,W)
         # 원래 크기(139x250)로 업샘플링
         logits = F.interpolate(logits_low, size=(139, 250), mode='bilinear', align_corners=False)
         return logits
@@ -454,4 +452,3 @@ if __name__ == "__main__":
         args.train_pkl = str(Path(args.data_dir) / "labeled_training_set.pkl")
 
     train(args)
-

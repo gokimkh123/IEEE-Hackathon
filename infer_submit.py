@@ -1,9 +1,9 @@
-#%%
+# %%
 """
 infer_submit.py
 - 학습된 체크포인트(best.pt)를 불러와 test_set.pkl에 대해 추론
 - 각 항목에 'streak_label'(채널0), 'spot_label'(채널1)을 uint8(0/1)로 붙임
-- 결과 전체 딕셔너리를 NIST_Task1.pkl로 저장 (대회 제출 규격):contentReference[oaicite:1]{index=1}
+- 결과 전체 딕셔너리를 NIST_Task1.pkl로 저장 (대회 제출 규격)
 """
 
 import argparse, json, pickle
@@ -28,7 +28,7 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() and args.device != "cpu" else "cpu")
     print(f"[Device] {device}")
 
-    # 테스트 세트 로드 (대회 배포 구조):contentReference[oaicite:2]{index=2}
+    # 테스트 세트 로드
     test_pkl = Path(args.data_dir) / "test_set.pkl"
     with open(test_pkl, "rb") as f:
         test_dict = pickle.load(f)
@@ -75,7 +75,7 @@ def main(args):
             # 3) 이진화(임계값) 및 dtype 변환(제출 규격)
             pred = (prob > args.thr).astype(np.uint8)    # 0/1, uint8
 
-            # 4) 테스트 딕셔너리에 결과 부착 (채널 순서: 0=streak, 1=spot):contentReference[oaicite:3]{index=3}
+            # 4) 테스트 딕셔너리에 결과 부착 (채널 순서: 0=streak, 1=spot)
             item["streak_label"] = pred[0]
             item["spot_label"]   = pred[1]
 
@@ -83,9 +83,9 @@ def main(args):
     pbar.close()
 
     # --------------------------------------------------
-    # 결과 저장: NIST_Task1.pkl (필수 파일명):contentReference[oaicite:4]{index=4}
+    # 결과 저장: NIST_Task1.pkl (필수 파일명)
     # --------------------------------------------------
-    out_path = Path(args.out) if args.out else Path("NIST_Task1.pkl")
+    out_path = Path(args.out) if args.out else Path("datasets/NIST_Task1.pkl")
     with open(out_path, "wb") as f:
         pickle.dump(test_dict, f)
     print(f"[Saved] {out_path}  (attach masks into test dict as 'streak_label' & 'spot_label')")
