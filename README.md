@@ -1,10 +1,47 @@
-핵심 아이디어 (RCA 없음, CNN+GNN만)
-CNN 인코더(share): 139×250 → stride=4로 H′×W′ 피처맵 (예: 35×63, 채널 F=128).
+# 동작 원리 (RCA 없는 현재 버전)
+1. 입력 전처리
+.pkl에서 ROI 이미지(조명 a/b/c 채널)를 읽고,
+요청한 --channels 순서로 쌓아서 (H,W,C) 배열로 만듭니다.
 
-GNN(Message Passing 2~3층): H′×W′ 그리드의 8-이웃 그래프를 고정으로 만들고, h' = ReLU(W_self h + W_nei mean(h_neighbors)) 형태로 단순 전달(의존 라이브러리 없이 torch.sparse로 구현).
+선택적으로 a 채널에 CLAHE 적용(--use_clahe).
 
-디코더: (H′×W′,F) → (2,H′,W′) 로짓 → bilinear 업샘플로 (2,139,250), 시그모이드+0.5 임계값.
+uint8 → float32 변환 후 /255.0 스케일링.
 
-손실/지표: BCEWithLogits + Dice, 검증은 IoU_streak, IoU_spot, 평균 IoU.
+학습 시 계산된 채널별 (mean,std)로 정규화.
 
-제출: 테스트 딕셔너리 각 항목에 streak_label, spot_label(uint8) 붙여 NIST_Task1.pkl 저장
+# 2. CNN 인코더
+CNNEncoder가 stride=4로 다운샘플하여
+(N, C_in, 139, 250) → (N, feat, 35, 63) 특징맵 생성train.
+
+ceil_mode=True로 MaxPool하여 그래프 크기와 정확히 일치.
+
+# 3. GNN 처리
+(35×63) 패치 단위를 노드로 하는 8-이웃 격자 그래프 생성 (build_grid_adj).
+
+SimpleGridGNN이 Mean Aggregation으로 노드 피처를 업데이트train.
+
+여기서 RCA에서 쓰는 "원인 가중치" 같은 것은 전혀 없음 — 그냥 동일 가중치 8이웃 메시지 패싱.
+
+# 4. 마스크 예측 & 업샘플링
+GNN 출력 → SegHead로 2채널 로짓맵(스트릭/스팟) 생성.
+
+Bilinear 업샘플로 원래 크기 (139×250) 복원train.
+
+# 5. 손실 & 평가
+학습 시 BCEWithLogits + λ·Dice 손실.
+
+검증 시 IoU(streak), IoU(spot), mIoU 계산.
+
+최고 mIoU 모델을 best.pt로 저장.
+
+# 6. 추론 & 제출
+infer_submit.py가 test_set.pkl을 읽고, 학습 때 저장한 채널/정규화 정보 사용.
+
+각 항목에 예측 마스크 2장을 붙여 streak_label, spot_label 필드에 저장.
+
+전체 딕셔너리를 NIST_Task1.pkl로 저장 — 대회 요구 구조 그대로infer_submit.
+
+# 실행 명령어
+```docker
+./run_pipeline.sh
+```
