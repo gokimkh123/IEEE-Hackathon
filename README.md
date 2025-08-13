@@ -45,3 +45,6 @@ infer_submit.py가 test_set.pkl을 읽고, 학습 때 저장한 채널/정규화
 ```docker
 ./run_pipeline.sh
 ```
+
+# thr 최적값
+**0.620**

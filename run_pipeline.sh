@@ -30,9 +30,9 @@ docker run --rm --gpus all \
   python3 train.py \
     --data_dir datasets \
     --save_dir outputs \
-    --epochs 80 \
-    --batch_size 16 \
-    --lr 1e-3
+    --epochs 500 \
+    --batch_size 32 \
+    --lr 0.01
 
 # ====== 제출 파일 생성 ======
 echo "== 제출 파일 생성 (infer_submit.py) =="
@@ -63,8 +63,7 @@ if [ -f "$DATASETS/labeled_training_set.pkl" ]; then
     python3 eval_val.py \
       --data_dir datasets \
       --save_dir outputs \
-      --thr 0.5 \
-      --max_samples 200
+      --thr 0.620
 fi
 
 echo "== 완료 =="
