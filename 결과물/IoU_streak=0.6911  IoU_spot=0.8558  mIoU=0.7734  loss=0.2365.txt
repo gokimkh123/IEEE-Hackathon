@@ -1,1 +1,0 @@
-IoU_streak=0.7378  IoU_spot=0.8463  mIoU=0.7921  loss=0.2156
