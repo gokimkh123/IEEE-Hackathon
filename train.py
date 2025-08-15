@@ -437,10 +437,10 @@ if __name__ == "__main__":
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--wd", type=float, default=1e-4)
     ap.add_argument("--dice_w", type=float, default=0.5)
-    ap.add_argument("--thr", type=float, default=0.5)
+    ap.add_argument("--thr", type=float, default=0.50)
     ap.add_argument("--val_ratio", type=float, default=0.1)
-    ap.add_argument("--feat", type=int, default=128)
-    ap.add_argument("--gnn_layers", type=int, default=2)
+    ap.add_argument("--feat", type=int, default=768)
+    ap.add_argument("--gnn_layers", type=int, default=8)
     ap.add_argument("--num_workers", type=int, default=2)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--device", type=str, default="auto")  # auto|cpu

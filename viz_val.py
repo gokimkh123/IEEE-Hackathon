@@ -26,7 +26,10 @@ def main(a):
     x = torch.from_numpy(np.transpose(img_n,(2,0,1))).unsqueeze(0).to(device)
 
     prob = infer_one(model, A, x)     # (2,139,250)
-    pred = (prob > a.thr).astype(np.uint8)
+   # 기존: pred = (prob > a.thr).astype(np.uint8)
+    pred0 = (prob[0] > a.thr_streak).astype(np.uint8)
+    pred1 = (prob[1] > a.thr_spot).astype(np.uint8)
+    pred   = np.stack([pred0, pred1], axis=0)
 
     def show(ax, arr, title):
         ax.imshow(arr, cmap="gray"); ax.set_title(title); ax.axis("off")
@@ -44,8 +47,9 @@ if __name__=="__main__":
     ap.add_argument("--save_dir", type=str, required=True)
     ap.add_argument("--part", type=str, default="part01")
     ap.add_argument("--idx", type=int, default=0)
-    ap.add_argument("--thr", type=float, default=0.5)
-    ap.add_argument("--feat", type=int, default=128)
-    ap.add_argument("--gnn_layers", type=int, default=2)
+    ap.add_argument("--thr_streak", type=float, default=0.3)
+    ap.add_argument("--thr_spot",   type=float, default=0.7)
+    ap.add_argument("--feat", type=int, default=256)
+    ap.add_argument("--gnn_layers", type=int, default=4)
     ap.add_argument("--device", type=str, default="auto")
     a = ap.parse_args(); main(a)

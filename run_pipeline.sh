@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+\#!/usr/bin/env bash
 set -euo pipefail
 
 # ====== 스크립트 위치 기준 경로 ======
@@ -30,9 +30,9 @@ docker run --rm --gpus all \
   python3 train.py \
     --data_dir datasets \
     --save_dir outputs \
-    --epochs 500 \
-    --batch_size 32 \
-    --lr 0.01
+    --epochs 150 \
+    --batch_size 16 \
+    --lr 1e-3
 
 # ====== 제출 파일 생성 ======
 echo "== 제출 파일 생성 (infer_submit.py) =="
@@ -43,6 +43,7 @@ docker run --rm --gpus all \
   python3 infer_submit.py \
     --data_dir datasets \
     --save_dir outputs \
+    --thr 0.50 \
     --out /app/outputs/NIST_Task1.pkl
 
 # ====== 제출 파일 검증 ======
@@ -63,7 +64,7 @@ if [ -f "$DATASETS/labeled_training_set.pkl" ]; then
     python3 eval_val.py \
       --data_dir datasets \
       --save_dir outputs \
-      --thr 0.620
+      --thr 0.50
 fi
 
 echo "== 완료 =="
