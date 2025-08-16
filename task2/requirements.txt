@@ -1,0 +1,6 @@
+# requirements.txt
+numpy
+tqdm
+torch-fidelity
+lpips
+Pillow
