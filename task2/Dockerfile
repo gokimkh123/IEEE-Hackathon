@@ -1,24 +1,32 @@
-# Task 2: CNN+GNN cVAE generator runtime
-# Base: official PyTorch image with CUDA 12.1 runtime
-FROM pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime
+# Dockerfile
 
-# Prevent interactive prompts
+# NVIDIA CUDA 12.1.1과 cuDNN 8을 포함한 Ubuntu 22.04 이미지를 기반으로 설정
+FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
+
+# 환경 변수 설정
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
 
-# System deps (minimal)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git ca-certificates && \
+# 시스템 패키지 업데이트 및 Python 설치
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip git && \
     rm -rf /var/lib/apt/lists/*
 
+# 작업 디렉터리 설정
 WORKDIR /app
 
-# Copy and install Python deps
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+# requirements.txt 복사
+COPY requirements.txt .
 
-# (Optional) copy the training/generation script into image
-# You can also mount your working directory at runtime to override this.
-COPY Task2_All_In_One_CNNGNN_Generative.py /app/Task2_All_In_One_CNNGNN_Generative.py
+# PyTorch를 CUDA 12.1 버전에 맞춰 설치 (A6000 GPU 지원)
+RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
-# Default command (overridden by run.sh)
-CMD ["bash"]
+# 나머지 Python 패키지 설치
+RUN pip3 install -r requirements.txt
+
+# 프로젝트 소스 코드 및 데이터셋 복사
+COPY src/ ./src/
+COPY datasets/ ./datasets/
+
+# 스크립트 실행
+CMD ["python3", "src/main.py"]
