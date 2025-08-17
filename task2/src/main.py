@@ -119,7 +119,7 @@ if __name__ == "__main__":
     scheduler_G = StepLR(optimizer_G, step_size=100, gamma=0.5)
     scheduler_D = StepLR(optimizer_D, step_size=100, gamma=0.5)
 
-    os.makedirs("checkpoints", exist_ok=True)
+    os.makedirs("/app/checkpoints", exist_ok=True)
 
     for epoch in range(PARAMS['epochs']):
         progress_bar = tqdm(enumerate(dataloader), total=len(dataloader))
@@ -150,8 +150,8 @@ if __name__ == "__main__":
         scheduler_D.step()
 
         if (epoch + 1) % PARAMS['checkpoint_interval'] == 0:
-            torch.save(generator.state_dict(), f"checkpoints/generator_epoch_{epoch + 1}.pth")
-            torch.save(discriminator.state_dict(), f"checkpoints/discriminator_epoch_{epoch + 1}.pth")
+            torch.save(generator.state_dict(), f"/app/checkpoints/generator_epoch_{epoch + 1}.pth")
+            torch.save(discriminator.state_dict(), f"/app/checkpoints/discriminator_epoch_{epoch + 1}.pth")
             print(f"Saved model checkpoint for Epoch {epoch + 1}.")
 
     print("Training complete!")
