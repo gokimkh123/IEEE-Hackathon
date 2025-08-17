@@ -9,7 +9,7 @@ import os
 from tqdm import tqdm
 
 PARAMS = {
-    "epochs": 20,
+    "epochs": 400,
     "batch_size": 32,
     "lr": 0.0002,
     "beta1": 0.5,
