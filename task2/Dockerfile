@@ -9,11 +9,13 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-COPY requirements.txt .
+
+RUN git clone https://github.com/gokimkh123/IEEE-Hackathon.git .
+
+
+WORKDIR /app/task2
+
 RUN pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 RUN pip3 install -r requirements.txt
-
-COPY src/ ./src/
-COPY datasets/ ./datasets/
 
 CMD ["python3", "src/main.py"]

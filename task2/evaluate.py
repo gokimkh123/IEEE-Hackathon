@@ -10,9 +10,9 @@ import lpips
 from tqdm import tqdm
 import numpy as np
 
-CHECKPOINTS_DIR = "checkpoints"
-REAL_DATA_PATHS = ["datasets/labeled_training_set.pkl", "datasets/unlabeled_training_set.pkl"]
-FINAL_OUTPUT_DIR = "submission"
+CHECKPOINTS_DIR = "/app/checkpoints"
+REAL_DATA_PATHS = ["/app/datasets/labeled_training_set.pkl", "/app/datasets/unlabeled_training_set.pkl"]
+FINAL_OUTPUT_DIR = "/app/submission"
 LPIPS_SAMPLE_PAIRS = 1000
 
 PARAMS = {
