@@ -21,9 +21,12 @@ PARAMS = {
     "checkpoint_interval": 20
 }
 
+from PIL import Image # 파일 상단에 이 줄을 추가하세요.
 
 def load_and_prepare_data(data_paths):
     all_images, all_labels, label_map = [], [], {'a': 0, 'b': 1, 'c': 2}
+    target_size = (PARAMS['img_width'], PARAMS['img_height'])
+
     for path in data_paths:
         if not os.path.exists(path): continue
         print(f"Loading {path} file...")
@@ -34,10 +37,15 @@ def load_and_prepare_data(data_paths):
                 images = layer_data['images']
                 for key, img_np in images.items():
                     if img_np.ndim == 2: img_np = np.stack([img_np] * 3, axis=-1)
-                    all_images.append(img_np)
+                    pil_img = Image.fromarray(img_np)
+                    resized_img = pil_img.resize(target_size, Image.Resampling.LANCZOS)
+                    resized_img_np = np.array(resized_img)
+
+                    all_images.append(resized_img_np) 
                     all_labels.append(label_map[key[-1]])
+
     images_np = np.array(all_images, dtype=np.float32)
-    images_tensor = torch.from_numpy(images_np).permute(0, 3, 1, 2);
+    images_tensor = torch.from_numpy(images_np).permute(0, 3, 1, 2)
     images_tensor = (images_tensor / 127.5) - 1.0
     return TensorDataset(images_tensor, torch.LongTensor(all_labels))
 
