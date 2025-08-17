@@ -21,12 +21,9 @@ PARAMS = {
     "checkpoint_interval": 20
 }
 
-from PIL import Image # 파일 상단에 이 줄을 추가하세요.
 
 def load_and_prepare_data(data_paths):
     all_images, all_labels, label_map = [], [], {'a': 0, 'b': 1, 'c': 2}
-    target_size = (PARAMS['img_width'], PARAMS['img_height'])
-
     for path in data_paths:
         if not os.path.exists(path): continue
         print(f"Loading {path} file...")
@@ -37,15 +34,10 @@ def load_and_prepare_data(data_paths):
                 images = layer_data['images']
                 for key, img_np in images.items():
                     if img_np.ndim == 2: img_np = np.stack([img_np] * 3, axis=-1)
-                    pil_img = Image.fromarray(img_np)
-                    resized_img = pil_img.resize(target_size, Image.Resampling.LANCZOS)
-                    resized_img_np = np.array(resized_img)
-
-                    all_images.append(resized_img_np) 
+                    all_images.append(img_np)
                     all_labels.append(label_map[key[-1]])
-
     images_np = np.array(all_images, dtype=np.float32)
-    images_tensor = torch.from_numpy(images_np).permute(0, 3, 1, 2)
+    images_tensor = torch.from_numpy(images_np).permute(0, 3, 1, 2);
     images_tensor = (images_tensor / 127.5) - 1.0
     return TensorDataset(images_tensor, torch.LongTensor(all_labels))
 
@@ -127,8 +119,7 @@ if __name__ == "__main__":
     scheduler_G = StepLR(optimizer_G, step_size=100, gamma=0.5)
     scheduler_D = StepLR(optimizer_D, step_size=100, gamma=0.5)
 
-    CHECKPOINT_OUTPUT_DIR = "/app/checkpoints"
-    os.makedirs(CHECKPOINT_OUTPUT_DIR, exist_ok=True)
+    os.makedirs("checkpoints", exist_ok=True)
 
     for epoch in range(PARAMS['epochs']):
         progress_bar = tqdm(enumerate(dataloader), total=len(dataloader))
@@ -159,7 +150,8 @@ if __name__ == "__main__":
         scheduler_D.step()
 
         if (epoch + 1) % PARAMS['checkpoint_interval'] == 0:
-            torch.save(generator.state_dict(), f"{CHECKPOINT_OUTPUT_DIR}/generator_epoch_{epoch + 1}.pth")
-            torch.save(discriminator.state_dict(), f"{CHECKPOINT_OUTPUT_DIR}/discriminator_epoch_{epoch + 1}.pth")
+            torch.save(generator.state_dict(), f"checkpoints/generator_epoch_{epoch + 1}.pth")
+            torch.save(discriminator.state_dict(), f"checkpoints/discriminator_epoch_{epoch + 1}.pth")
+            print(f"Saved model checkpoint for Epoch {epoch + 1}.")
 
     print("Training complete!")
