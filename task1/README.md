@@ -1,50 +1,34 @@
-# 동작 원리 (RCA 없는 현재 버전)
-1. 입력 전처리
-.pkl에서 ROI 이미지(조명 a/b/c 채널)를 읽고,
-요청한 --channels 순서로 쌓아서 (H,W,C) 배열로 만듭니다.
+# How it works (Current version without RCA)
+1. Input Preprocessing
+- Reads ROI images (lighting channels a/b/c) from .pkl.
+- Stacks them in the requested --channels order to create an (H,W,C) array.
+- Optionally applies CLAHE to channel 'a' (--use_clahe).
+- Converts uint8 to float32 and scales by /255.0.
+- Normalizes using per-channel (mean, std) calculated during training.
 
-선택적으로 a 채널에 CLAHE 적용(--use_clahe).
+# 2. CNN Encoder
+- The CNNEncoder downsamples with stride=4 to generate a feature map: (N, C_in, 139, 250) -> (N, feat, 35, 63).
+- Uses MaxPool with ceil_mode=True to exactly match the graph size.
 
-uint8 → float32 변환 후 /255.0 스케일링.
+# 3. GNN Processing
+- Creates an 8-neighbor grid graph with (35x63) patches as nodes (build_grid_adj).
+- SimpleGridGNN updates node features using Mean Aggregation.
+- There are no "causal weights" like in RCA here — just simple, equal-weight 8-neighbor message passing.
 
-학습 시 계산된 채널별 (mean,std)로 정규화.
+# 4. Mask Prediction & Upsampling
+- GNN output is fed to a SegHead to generate a 2-channel logit map (streak/spot).
+- Bilinear upsampling restores the original size (139x250).
 
-# 2. CNN 인코더
-CNNEncoder가 stride=4로 다운샘플하여
-(N, C_in, 139, 250) → (N, feat, 35, 63) 특징맵 생성train.
+# 5. Loss & Evaluation
+- During training: BCEWithLogits + λ·Dice loss.
+- During validation: Calculates IoU(streak), IoU(spot), and mIoU.
+- Saves the model with the best mIoU as best.pt.
 
-ceil_mode=True로 MaxPool하여 그래프 크기와 정확히 일치.
+# 6. Inference & Submission
+- infer_submit.py reads test_set.pkl and uses the channel/normalization info saved during training.
+- Attaches two prediction masks to each item, saving them in the streak_label and spot_label fields.
+- Saves the entire dictionary as NIST_Task1.pkl — exactly matching the competition's required structure.
 
-# 3. GNN 처리
-(35×63) 패치 단위를 노드로 하는 8-이웃 격자 그래프 생성 (build_grid_adj).
-
-SimpleGridGNN이 Mean Aggregation으로 노드 피처를 업데이트train.
-
-여기서 RCA에서 쓰는 "원인 가중치" 같은 것은 전혀 없음 — 그냥 동일 가중치 8이웃 메시지 패싱.
-
-# 4. 마스크 예측 & 업샘플링
-GNN 출력 → SegHead로 2채널 로짓맵(스트릭/스팟) 생성.
-
-Bilinear 업샘플로 원래 크기 (139×250) 복원train.
-
-# 5. 손실 & 평가
-학습 시 BCEWithLogits + λ·Dice 손실.
-
-검증 시 IoU(streak), IoU(spot), mIoU 계산.
-
-최고 mIoU 모델을 best.pt로 저장.
-
-# 6. 추론 & 제출
-infer_submit.py가 test_set.pkl을 읽고, 학습 때 저장한 채널/정규화 정보 사용.
-
-각 항목에 예측 마스크 2장을 붙여 streak_label, spot_label 필드에 저장.
-
-전체 딕셔너리를 NIST_Task1.pkl로 저장 — 대회 요구 구조 그대로infer_submit.
-
-# 실행 명령어
+# Execution Command
 ```docker
 ./run_pipeline.sh
-```
-
-# thr 최적값
-**0.50**

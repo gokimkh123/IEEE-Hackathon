@@ -1,9 +1,7 @@
-
 from typing import Optional, Tuple, List
 import numpy as np
 
 def _find_intervals(mask: np.ndarray) -> List[Tuple[int, int]]:
-
     mask = np.asarray(mask, dtype=bool)
     if mask.ndim != 1:
         raise ValueError("mask must be 1D")
@@ -28,7 +26,6 @@ def _apply_intervals(T: int, intervals: List[Tuple[int, int]]) -> np.ndarray:
     return out
 
 def _merge_and_filter(intervals: List[Tuple[int, int]], min_duration: int = 1, merge_gap: int = 0) -> List[Tuple[int, int]]:
-
     if not intervals:
         return []
     intervals = sorted(intervals)
@@ -55,20 +52,16 @@ def adjust_predicts_v2(
     cooldown: int = 0,
     return_latency: bool = False
 ):
-
     s = np.asarray(scores).astype(float).reshape(-1)
     T = s.size
     pred = (s > float(threshold)).astype(bool)
-
 
     if cooldown and T > 0:
         intervals = _find_intervals(pred)
         cd_intervals = []
         last_end_with_cd = -10**9
         for (st, en) in intervals:
-
             if st <= last_end_with_cd + cooldown and cd_intervals:
-
                 prev_s, prev_e = cd_intervals[-1]
                 cd_intervals[-1] = (prev_s, max(prev_e, en))
             else:
@@ -86,7 +79,6 @@ def adjust_predicts_v2(
             raise ValueError("labels must be the same length as scores.")
         new_intervals = []
         for (st, en) in intervals:
-
             j = st
             step = 0
             while j - 1 >= 0 and y[j - 1] and (max_backfill is None or step < max_backfill):
@@ -97,9 +89,7 @@ def adjust_predicts_v2(
             new_intervals.append((j, en))
         intervals = new_intervals
 
-
     intervals = _merge_and_filter(intervals, min_duration=min_duration, merge_gap=merge_gap)
-
 
     pred = _apply_intervals(T, intervals)
 

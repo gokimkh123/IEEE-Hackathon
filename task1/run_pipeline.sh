@@ -1,28 +1,25 @@
-\#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-# ====== 스크립트 위치 기준 경로 ======
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DATASETS="$SCRIPT_DIR/datasets"   # datasets 폴더
-OUTPUTS="$SCRIPT_DIR/outputs"     # outputs 폴더
+DATASETS="$SCRIPT_DIR/datasets"
+OUTPUTS="$SCRIPT_DIR/outputs"
 
 IMAGE="ieee-case:gpu"
 
-# ====== 사전 체크 ======
 if [ ! -d "$DATASETS" ]; then
-  echo "[ERR] datasets 폴더가 없습니다: $DATASETS"; exit 1
+  echo "[ERR] datasets folder not found: $DATASETS"; exit 1
 fi
 mkdir -p "$OUTPUTS"
 
-echo "== Docker 이미지 빌드 =="
+echo "== Building Docker image =="
 docker build -t "$IMAGE" "$SCRIPT_DIR"
 
-echo "== GPU 진단 =="
+echo "== Diagnosing GPU =="
 docker run --rm --gpus all "$IMAGE" nvidia-smi || {
-  echo "[WARN] nvidia-smi 실패. 드라이버/Container Toolkit 확인 필요."; }
+  echo "[WARN] nvidia-smi failed. Check drivers/Container Toolkit."; }
 
-# ====== 학습 ======
-echo "== 학습 시작 =="
+echo "== Starting training =="
 docker run --rm --gpus all \
   -v "$DATASETS":/app/datasets \
   -v "$OUTPUTS":/app/outputs \
@@ -34,8 +31,7 @@ docker run --rm --gpus all \
     --batch_size 16 \
     --lr 1e-3
 
-# ====== 제출 파일 생성 ======
-echo "== 제출 파일 생성 (infer_submit.py) =="
+echo "== Generating submission file (infer_submit.py) =="
 docker run --rm --gpus all \
   -v "$DATASETS":/app/datasets \
   -v "$OUTPUTS":/app/outputs \
@@ -46,17 +42,15 @@ docker run --rm --gpus all \
     --thr 0.50 \
     --out /app/outputs/NIST_Task1.pkl
 
-# ====== 제출 파일 검증 ======
-echo "== 제출 파일 형식 검증 (check_submission.py) =="
+echo "== Validating submission file format (check_submission.py) =="
 docker run --rm \
   -v "$OUTPUTS":/app/outputs \
   "$IMAGE" \
   python3 check_submission.py \
     --pkl /app/outputs/NIST_Task1.pkl
 
-# ====== 선택: 라벨셋 평가 ======
 if [ -f "$DATASETS/labeled_training_set.pkl" ]; then
-  echo "== (옵션) 라벨셋 평가 (eval_val.py) =="
+  echo "== (Optional) Evaluating on labeled set (eval_val.py) =="
   docker run --rm --gpus all \
     -v "$DATASETS":/app/datasets \
     -v "$OUTPUTS":/app/outputs \
@@ -67,5 +61,5 @@ if [ -f "$DATASETS/labeled_training_set.pkl" ]; then
       --thr 0.50
 fi
 
-echo "== 완료 =="
-echo "제출 파일: $OUTPUTS/NIST_Task1.pkl"
+echo "== Done =="
+echo "Submission file: $OUTPUTS/NIST_Task1.pkl"

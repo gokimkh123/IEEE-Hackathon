@@ -1,4 +1,3 @@
-# %%
 import argparse, os, json, pickle, random
 from pathlib import Path
 import numpy as np
@@ -10,17 +9,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
-
 def set_seed(s=42):
-
     random.seed(s)
     np.random.seed(s)
     torch.manual_seed(s)
     torch.cuda.manual_seed_all(s)
 
-
 def _to_gray(arr):
-
     if arr.ndim == 2:
         return arr
     if arr.ndim == 3 and arr.shape[2] == 3:
@@ -31,7 +26,6 @@ def _to_gray(arr):
     raise ValueError(f"Unexpected image shape: {arr.shape}")
 
 def select_channels(images_dict, channels='abc'):
-
     if isinstance(images_dict, np.ndarray):
         arr = _to_gray(images_dict)[..., None]
         return arr
@@ -45,7 +39,6 @@ def select_channels(images_dict, channels='abc'):
     return arr
 
 def try_clahe_on_a(img_hw_c, channels, use_clahe=False):
-
     if not use_clahe or 'a' not in channels:
         return img_hw_c
     try:
@@ -57,9 +50,7 @@ def try_clahe_on_a(img_hw_c, channels, use_clahe=False):
         pass
     return img_hw_c
 
-
 def flatten_labeled_items(pkl_path):
-
     with open(pkl_path, 'rb') as f:
         d = pickle.load(f)
     items = []
@@ -74,9 +65,7 @@ def flatten_labeled_items(pkl_path):
             })
     return items
 
-
 def compute_channel_stats(items, channels, use_clahe):
-
     sums = np.zeros(len(channels), dtype=np.float64)
     sqs = np.zeros(len(channels), dtype=np.float64)
     npx_total = 0
@@ -93,9 +82,7 @@ def compute_channel_stats(items, channels, use_clahe):
     std = np.sqrt(np.clip(var, 1e-12, None)) / 255.0
     return mean.tolist(), std.tolist()
 
-
 class LabeledDataset(Dataset):
-
     def __init__(self, items, channels='abc', mean=None, std=None, use_clahe=False, augment=False):
         self.items = items
         self.channels = channels
@@ -108,7 +95,6 @@ class LabeledDataset(Dataset):
         return len(self.items)
 
     def _maybe_aug(self, img, mask):
-
         if random.random() < 0.5:
             img = np.flip(img, axis=1)
             mask = np.flip(mask, axis=2)
@@ -118,12 +104,10 @@ class LabeledDataset(Dataset):
         return img.copy(), mask.copy()
 
     def __getitem__(self, idx):
-
         it = self.items[idx]
         img = select_channels(it['images'], self.channels)
         img = try_clahe_on_a(img, self.channels, self.use_clahe)
         img = img.astype(np.float32) / 255.0
-
 
         streak = it['streak'].astype(np.float32)
         spot = it['spot'].astype(np.float32)
@@ -132,27 +116,23 @@ class LabeledDataset(Dataset):
         if self.augment:
             img, mask = self._maybe_aug(img, mask)
 
-
         img = (img - self.mean) / (self.std + 1e-6)
         img = np.transpose(img, (2, 0, 1))
-
 
         img = np.ascontiguousarray(img, dtype=np.float32)
         mask = np.ascontiguousarray(mask, dtype=np.float32)
 
         return torch.from_numpy(img), torch.from_numpy(mask)
 
-
 class CNNEncoder(nn.Module):
-
     def __init__(self, in_ch, feat=128):
         super().__init__()
         self.net = nn.Sequential(
             nn.Conv2d(in_ch, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(inplace=True),
             nn.Conv2d(32, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, ceil_mode=True),  # 139x250 -> 70x125  ⭐
+            nn.MaxPool2d(2, ceil_mode=True),
             nn.Conv2d(32, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, ceil_mode=True),  # 70x125 -> 35x63   ⭐
+            nn.MaxPool2d(2, ceil_mode=True),
             nn.Conv2d(64, feat, 3, padding=1), nn.BatchNorm2d(feat), nn.ReLU(inplace=True),
         )
         self.feat = feat
@@ -160,9 +140,7 @@ class CNNEncoder(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-
 def build_grid_adj(h, w, device):
-
     idx = []
     for y in range(h):
         for x in range(w):
@@ -188,9 +166,7 @@ def build_grid_adj(h, w, device):
     A_norm = torch.sparse.mm(Dinv, A)
     return A_norm.coalesce()
 
-
 class SimpleGridGNN(nn.Module):
-
     def __init__(self, dim, layers=2):
         super().__init__()
         self.layers = nn.ModuleList()
@@ -202,17 +178,14 @@ class SimpleGridGNN(nn.Module):
             }))
 
     def forward(self, H, A_norm):
-
         N, V, D = H.shape
         X = H
         for l in self.layers:
-            # 배치별 이웃 집계
             X_nei = torch.stack([torch.sparse.mm(A_norm, X[n]) for n in range(N)], dim=0)
             Y = l["w_self"](X) + l["w_nei"](X_nei)
             Y = F.relu(l["bn"](Y.reshape(-1, D))).reshape(N, V, D)
             X = Y
         return X
-
 
 class SegHead(nn.Module):
     def __init__(self, feat=128, out_ch=2):
@@ -222,9 +195,7 @@ class SegHead(nn.Module):
     def forward(self, feat_map):
         return self.proj(feat_map)
 
-
 class CNN_GNN_Seg(nn.Module):
-
     def __init__(self, in_ch=3, feat=128, gnn_layers=2, out_ch=2):
         super().__init__()
         self.enc = CNNEncoder(in_ch, feat=feat)
@@ -242,7 +213,6 @@ class CNN_GNN_Seg(nn.Module):
         logits = F.interpolate(logits_low, size=(139, 250), mode='bilinear', align_corners=False)
         return logits
 
-
 class DiceLoss(nn.Module):
     def __init__(self, eps=1e-6):
         super().__init__()
@@ -254,20 +224,15 @@ class DiceLoss(nn.Module):
         den = (probs + targets).sum(dim=(0, 2, 3)) + self.eps
         return (1 - (num + self.eps) / den).mean()
 
-
 def bce_dice(logits, y, w=0.5):
-
     return F.binary_cross_entropy_with_logits(logits, y) + w * DiceLoss()(logits, y)
-
 
 @torch.no_grad()
 def batch_iou(logits, y, thr=0.5):
-
     p = (torch.sigmoid(logits) > thr).float()
     inter = (p * y).sum(dim=(0, 2, 3))
     union = (p + y - p * y).sum(dim=(0, 2, 3)) + 1e-6
     return (inter + 1e-6) / union
-
 
 def train(args):
     set_seed(args.seed)
@@ -338,7 +303,6 @@ def train(args):
             torch.save({"model": model.state_dict(), "args": vars(args), "best_miou": best_miou},
                        Path(args.save_dir) / "checkpoints" / "best.pt")
             print(f"  -> saved best (mIoU={best_miou:.4f})")
-
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()

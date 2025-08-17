@@ -1,4 +1,3 @@
-# CUDA 12.1 + cuDNN8 (runtime)
 FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -7,7 +6,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# PyTorch CUDA 12.1
 RUN python3 -m pip install --no-cache-dir --upgrade pip && \
     python3 -m pip install --no-cache-dir \
         torch torchvision --index-url https://download.pytorch.org/whl/cu121
