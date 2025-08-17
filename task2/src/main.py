@@ -104,7 +104,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    data_paths = ["datasets/labeled_training_set.pkl", "datasets/unlabeled_training_set.pkl"]
+    data_paths = ["/app/datasets/labeled_training_set.pkl", "/app/datasets/unlabeled_training_set.pkl"]
     dataset = load_and_prepare_data(data_paths)
     dataloader = DataLoader(dataset, batch_size=PARAMS['batch_size'], shuffle=True, num_workers=4, drop_last=True)
 
